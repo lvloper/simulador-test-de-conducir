@@ -55,13 +55,14 @@ const savedBoolean = (id: string, defaultValue: boolean = false) => {
 
 
 
-export const ConfigScreen: React.FC<{ quiz: Quiz, start: (auto: boolean, barajarOpciones: boolean) => void }> = ({ quiz, start }) => {
+export const ConfigScreen: React.FC<{ quiz: Quiz, start: (auto: boolean, barajarOpciones: boolean, refuerzo: boolean) => void }> = ({ quiz, start }) => {
 
     const percent = useRef<HTMLInputElement>(null);
     const total = useRef<HTMLInputElement>(null);
     const [use, setUse] = useState<boolean[]>(savedUseState() || new Array(quiz.sourceLinks.length).fill(true));
     const [auto, setAuto] = useState<boolean>(savedBoolean("autoadvance"))//(savedAutoAdvance());
     const [barajaOpciones, setBarajaOpciones] = useState<boolean>(savedBoolean("baraja-opciones"));
+    const [refuerzo, setRefuerzo] = useState<boolean>(savedBoolean("refuerzo-inteligente"));
 
 
     useLayoutEffect(() => {
@@ -97,6 +98,11 @@ export const ConfigScreen: React.FC<{ quiz: Quiz, start: (auto: boolean, barajar
         setBarajaOpciones(val)
     }
 
+    const setRefuerzoInteligente: (val: boolean) => void = val => {
+        localStorage.setItem('refuerzo-inteligente', JSON.stringify(val));
+        setRefuerzo(val)
+    }
+
     const iniciar = () => {
 
         const limit = parseInt(total.current!.value) || DEFAULT_TOTAL;
@@ -107,8 +113,8 @@ export const ConfigScreen: React.FC<{ quiz: Quiz, start: (auto: boolean, barajar
             return;
         }
 
-        quiz.init(limit, use, sePasaCon);
-        start(auto, barajaOpciones);
+        quiz.init(limit, use, sePasaCon, refuerzo);
+        start(auto, barajaOpciones, refuerzo);
     }
 
 
@@ -129,6 +135,10 @@ export const ConfigScreen: React.FC<{ quiz: Quiz, start: (auto: boolean, barajar
         <h4> <Switch on={auto} setTo={nvalue => onSetAuto(nvalue)} /> Avanzar automaticamente si respondí bien (ahorra tiempo)</h4>
         <h4> <Switch on={barajaOpciones} setTo={nvalue => setBarajaOptions(nvalue)} /> Barajar opciones de la pregunta también.
             <br /><sub>↳ Para evitar memorizar el orden de la respuesta correcta.</sub>
+        </h4>
+
+        <h4> <Switch on={refuerzo} setTo={nvalue => setRefuerzoInteligente(nvalue)} /> 🧠 Refuerzo inteligente
+            <br /><sub>↳ Prioriza preguntas que contestaste mal anteriormente.</sub>
         </h4>
 
         <div className='next-question'>

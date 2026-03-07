@@ -7,6 +7,7 @@ import { Source5Provider } from "../providers/Source5.provider";
 import { Source6Provider } from "../providers/Source6.provider";
 import { Source7Provider } from "../providers/Source7.provider";
 import { Source8Provider } from "../providers/Source8.provider";
+import { sortByPriority, getErrorQuestionIds } from "../services/ScoringService";
 
 
 
@@ -50,7 +51,7 @@ export class Quiz {
         this._sinResponder = []; 
     }
 
-    init( limit:number, providersON:boolean[], seApruebaCon:number ) {
+    init( limit:number, providersON:boolean[], seApruebaCon:number, refuerzoInteligente:boolean = false ) {
 
         this._limit = limit;
         this._incorrectas = 0;
@@ -83,6 +84,11 @@ export class Quiz {
             const j = Math.floor(Math.random() * (i + 1));
             [all[i], all[j]] = [all[j], all[i]];
         } 
+
+        // Si refuerzo inteligente está activo, reordenar por prioridad
+        if (refuerzoInteligente) {
+            sortByPriority(all);
+        }
 
         this._totalAvailableQuestions = all.length;
  
@@ -145,5 +151,49 @@ export class Quiz {
 
     public termino() {
         return this._limit>0 && this._sinResponder.length==0;
+    }
+
+    /**
+     * Initializes a quiz with only the questions the user has gotten wrong before.
+     */
+    initErrorsOnly(providersON: boolean[], seApruebaCon: number) {
+        const errorIds = getErrorQuestionIds();
+
+        if (errorIds.size === 0) return;
+
+        this._incorrectas = 0;
+        this._correctPercentToPass = seApruebaCon;
+
+        const all: NumeredQuestion[] = this.providers.reduce((rtrn, prov, provIndex) => {
+            if (providersON.length === 0 || providersON[provIndex]) {
+                for (let i = 0; i < prov.totalQuestions(); i++) {
+                    const id = `${provIndex}-${i}`;
+                    if (errorIds.has(id)) {
+                        /** @ts-ignore */
+                        rtrn.push({
+                            ...prov.getQuestion(i),
+                            source: { ...prov.source, index: provIndex },
+                            number: 0,
+                            numberInProvider: i,
+                        });
+                    }
+                }
+            }
+            return rtrn;
+        }, [] as NumeredQuestion[]);
+
+        // shuffle
+        for (let i = all.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [all[i], all[j]] = [all[j], all[i]];
+        }
+
+        this._totalAvailableQuestions = all.length;
+        this._limit = all.length;
+
+        this._sinResponder = all.map((q, i) => ({
+            ...q,
+            number: i + 1,
+        }));
     }
 }

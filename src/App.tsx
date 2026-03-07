@@ -4,10 +4,12 @@ import './App.css';
 import DisqusComments from './component/comments';
 import Header from './component/Header';
 import { Image } from './component/Image';
+import { MyAnswersPanel } from './component/MyAnswersPanel';
 import { NumeredQuestion } from './providers/QuestionProvider';
 import { Quiz } from './quiz/Quiz';
 import { ConfigScreen } from './screen/ConfigScreen';
-import { ResultsScreen } from './screen/ResultsScreen'; 
+import { ResultsScreen } from './screen/ResultsScreen';
+import { saveAnswer } from './services/ScoringService'; 
 
 
 
@@ -33,8 +35,11 @@ function App() {
     const setMyAnswer = (optionIndex: number) => {
 
         if (answer < 0) {
+            const currentQuestion = question!;
             const correct = quiz.answer(optionIndex);
             setAnswer(optionIndex);
+
+            saveAnswer(currentQuestion, optionIndex, correct);
 
             if (autoMode && correct) {
                 clearInterval(timer.current);
@@ -86,6 +91,18 @@ function App() {
     return (
         <div className="App">
             <Header />
+            <MyAnswersPanel onPracticeErrors={() => {
+                const use = (() => { try { return JSON.parse(localStorage.getItem('use') ?? 'false') || []; } catch { return []; } })();
+                const percent = parseInt(localStorage.getItem('percent2pass') || '85') || 85;
+                quiz.initErrorsOnly(use, percent);
+                if (quiz.limit > 0) {
+                    setAutoMode(false);
+                    setAnswer(-1);
+                    setQuestion(quiz.getQuestion());
+                } else {
+                    alert('No hay preguntas con errores registrados.');
+                }
+            }} />
 
             {!question && !quiz.termino() && <div style={{ backgroundColor: "#939393" }} className="text-white py-16 mb-10 p-4">
                 <div className="main-content text-left text-shadow">
@@ -98,7 +115,7 @@ function App() {
             <main className="main-content">
                 {!question && !quiz.termino() && <div>
 
-                    <ConfigScreen quiz={quiz} start={(auto, barajaOpciones) => { barajarOpciones.current = barajaOpciones; setAutoMode(auto); setQuestion(quiz.getQuestion()) }} />
+                    <ConfigScreen quiz={quiz} start={(auto, barajaOpciones, _refuerzo) => { barajarOpciones.current = barajaOpciones; setAutoMode(auto); setQuestion(quiz.getQuestion()) }} />
                 </div>}
 
                 {!question && quiz.termino() && <ResultsScreen quiz={quiz} restart={restart} />}
