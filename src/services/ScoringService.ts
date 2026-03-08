@@ -157,3 +157,73 @@ export function sortByPriority(questions: NumeredQuestion[]): NumeredQuestion[] 
 
     return questions;
 }
+
+/**
+ * Muestreo ponderado sin reemplazo (Weighted Random Sampling).
+ *
+ * OBJETIVO: que las preguntas con errores tengan MAYOR PROBABILIDAD de
+ * aparecer dentro de las N preguntas del examen, pero que una vez seleccionadas
+ * queden en posición ALEATORIA (no siempre primero).
+ *
+ * CÓMO FUNCIONA — sistema de "boletos":
+ *   - Con errores:       2 a 5 boletos según ratio de error
+ *                        (más errores = más boletos = más chances de entrar)
+ *   - Nunca respondida:  1 boleto  (probabilidad base)
+ *   - Siempre correcta:  0.1 a 1 boleto, decrece cuantas más veces se acertó
+ *
+ * En cada paso se hace un sorteo aleatorio ponderado sobre el pool restante,
+ * se extrae la ganadora y se repite hasta completar las N preguntas.
+ * Finalmente se baraja el resultado → los errores aparecen en posición
+ * aleatoria dentro del examen, no siempre primero.
+ */
+export function weightedSelectQuestions(
+    questions: NumeredQuestion[],
+    limit: number
+): NumeredQuestion[] {
+    const data = loadScoring();
+
+    const getTickets = (q: NumeredQuestion): number => {
+        const id = getQuestionId(q);
+        const record = data[id];
+        if (!record) return 1; // nunca respondida → probabilidad base
+
+        const total = record.timesCorrect + record.timesIncorrect;
+        if (total === 0) return 1;
+
+        if (record.timesIncorrect > 0) {
+            // Con errores: 2..5 tickets según ratio de error
+            const errorRatio = record.timesIncorrect / total;
+            return 2 + errorRatio * 3;
+        }
+
+        // Solo correctas: menos tickets cuantas más veces acertó
+        return Math.max(0.1, 1 - record.timesCorrect * 0.15);
+    };
+
+    const n = Math.min(limit, questions.length);
+    const pool = questions.map(q => ({ q, tickets: getTickets(q) }));
+    const selected: NumeredQuestion[] = [];
+
+    while (selected.length < n && pool.length > 0) {
+        const totalWeight = pool.reduce((sum, item) => sum + item.tickets, 0);
+        let rand = Math.random() * totalWeight;
+
+        for (let i = 0; i < pool.length; i++) {
+            rand -= pool[i].tickets;
+            if (rand <= 0) {
+                selected.push(pool[i].q);
+                pool.splice(i, 1);
+                break;
+            }
+        }
+    }
+
+    // Barajar el resultado: las preguntas priorizadas deben aparecer
+    // en posición aleatoria dentro del examen, no siempre primero
+    for (let i = selected.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [selected[i], selected[j]] = [selected[j], selected[i]];
+    }
+
+    return selected;
+}

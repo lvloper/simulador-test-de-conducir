@@ -7,7 +7,7 @@ import { Source5Provider } from "../providers/Source5.provider";
 import { Source6Provider } from "../providers/Source6.provider";
 import { Source7Provider } from "../providers/Source7.provider";
 import { Source8Provider } from "../providers/Source8.provider";
-import { sortByPriority, getErrorQuestionIds } from "../services/ScoringService";
+import { sortByPriority, getErrorQuestionIds, weightedSelectQuestions } from "../services/ScoringService";
 
 
 
@@ -85,23 +85,22 @@ export class Quiz {
             [all[i], all[j]] = [all[j], all[i]];
         } 
 
-        // Si refuerzo inteligente está activo, reordenar por prioridad
+        this._totalAvailableQuestions = all.length;
+
+        const effectiveLimit = limit > 0 ? Math.min(limit, all.length) : all.length;
+
+        let selected: NumeredQuestion[];
         if (refuerzoInteligente) {
-            sortByPriority(all);
+            // Muestreo ponderado: errores tienen más probabilidad de entrar
+            // en las N preguntas, pero el orden es aleatorio dentro del examen
+            selected = weightedSelectQuestions(all, effectiveLimit);
+        } else {
+            selected = all.slice(0, effectiveLimit);
         }
 
-        this._totalAvailableQuestions = all.length;
- 
-        //en caso de que haya cambiado...
-        if( limit>0 )
-        {
-            // limitar preguntas a este numero
-            all.length = Math.min( this._limit, all.length ); 
-        } 
+        this._limit = selected.length; 
 
-        this._limit = all.length; 
-
-        this._sinResponder = all.map( (q,i)=>({
+        this._sinResponder = selected.map( (q,i)=>({
             ...q,
             number: i+1
         })); 
