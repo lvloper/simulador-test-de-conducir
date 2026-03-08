@@ -7,6 +7,8 @@ export const MyAnswersPanel: React.FC<{ onPracticeErrors?: () => void }> = ({ on
     const [open, setOpen] = useState(false);
     const [filter, setFilter] = useState<Filter>("all");
     const [, setRefresh] = useState(0);
+    const [page, setPage] = useState(0);
+    const PAGE_SIZE = 20;
 
     const data = getAllAnswered();
     const totalAnswered = Object.keys(data).length;
@@ -30,7 +32,11 @@ export const MyAnswersPanel: React.FC<{ onPracticeErrors?: () => void }> = ({ on
         return items;
     }, [data, filter]);
 
-    const errorCount = Object.values(data).filter((r) => r.timesIncorrect > 0).length;
+    const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
+    const safeP = Math.min(page, totalPages - 1);
+    const paginatedEntries = entries.slice(safeP * PAGE_SIZE, (safeP + 1) * PAGE_SIZE);
+
+    const errorCount = Object.values(data).filter((r) => !r.lastCorrect).length;
     const hasErrors = errorCount > 0;
 
     const handleClear = () => {
@@ -148,17 +154,17 @@ export const MyAnswersPanel: React.FC<{ onPracticeErrors?: () => void }> = ({ on
                     >
                         <FilterButton
                             active={filter === "all"}
-                            onClick={() => setFilter("all")}
+                            onClick={() => { setFilter("all"); setPage(0); }}
                             label="Todas"
                         />
                         <FilterButton
                             active={filter === "errors"}
-                            onClick={() => setFilter("errors")}
+                            onClick={() => { setFilter("errors"); setPage(0); }}
                             label="❌ Con errores"
                         />
                         <FilterButton
                             active={filter === "correct"}
-                            onClick={() => setFilter("correct")}
+                            onClick={() => { setFilter("correct"); setPage(0); }}
                             label="✅ Solo aciertos"
                         />
                         <div style={{ flex: 1 }} />
@@ -219,9 +225,36 @@ export const MyAnswersPanel: React.FC<{ onPracticeErrors?: () => void }> = ({ on
                             </p>
                         )}
 
-                        {entries.map(([id, record]) => (
+                        {paginatedEntries.map(([id, record]) => (
                             <AnswerCard key={id} id={id} record={record} />
                         ))}
+
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                            <div
+                                style={{
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    gap: 8,
+                                    padding: "14px 0 4px",
+                                }}
+                            >
+                                <PaginationButton
+                                    disabled={safeP === 0}
+                                    onClick={() => setPage(safeP - 1)}
+                                    label="◀ Anterior"
+                                />
+                                <span style={{ fontSize: "0.85em", color: "#666" }}>
+                                    {safeP + 1} / {totalPages}
+                                </span>
+                                <PaginationButton
+                                    disabled={safeP >= totalPages - 1}
+                                    onClick={() => setPage(safeP + 1)}
+                                    label="Siguiente ▶"
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -261,6 +294,29 @@ const FilterButton: React.FC<{
             cursor: "pointer",
             fontSize: "0.85em",
             fontWeight: active ? "bold" : "normal",
+        }}
+    >
+        {label}
+    </button>
+);
+
+const PaginationButton: React.FC<{
+    disabled: boolean;
+    onClick: () => void;
+    label: string;
+}> = ({ disabled, onClick, label }) => (
+    <button
+        onClick={onClick}
+        disabled={disabled}
+        style={{
+            padding: "5px 14px",
+            borderRadius: 4,
+            border: "1px solid #ccc",
+            backgroundColor: disabled ? "#f0f0f0" : "#007BC7",
+            color: disabled ? "#aaa" : "white",
+            cursor: disabled ? "default" : "pointer",
+            fontSize: "0.82em",
+            fontWeight: "bold",
         }}
     >
         {label}

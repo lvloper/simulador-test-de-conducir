@@ -83,13 +83,13 @@ export function computeWeight(record: AnswerRecord): number {
 }
 
 /**
- * Returns the set of question IDs that have at least one error.
+ * Returns the set of question IDs where the last answer was incorrect.
  */
 export function getErrorQuestionIds(): Set<string> {
     const data = loadScoring();
     const ids = new Set<string>();
     for (const [id, record] of Object.entries(data)) {
-        if (record.timesIncorrect > 0) {
+        if (!record.lastCorrect) {
             ids.add(id);
         }
     }
@@ -118,7 +118,7 @@ export function getQuestionWeight(question: NumeredQuestion): number {
 /**
  * Given an array of questions, sort them so that questions
  * with more errors come first, then never-answered, then well-answered.
- * Uses Fisher-Yates within each tier to maintain randomness.
+ * Adds jitter within tiers to maintain some randomness.
  */
 export function sortByPriority(questions: NumeredQuestion[]): NumeredQuestion[] {
     const data = loadScoring();
@@ -126,14 +126,34 @@ export function sortByPriority(questions: NumeredQuestion[]): NumeredQuestion[] 
     const getWeight = (q: NumeredQuestion): number => {
         const id = getQuestionId(q);
         const record = data[id];
-        if (!record) return 0;
+        if (!record) return 0; // never answered → neutral
+
         const total = record.timesCorrect + record.timesIncorrect;
         if (total === 0) return 0;
-        return (record.timesIncorrect - record.timesCorrect) / total;
+
+        const errorRatio = record.timesIncorrect / total; // 0..1
+
+        if (record.timesIncorrect > 0) {
+            // Has errors: base weight 100 + scaled by error ratio
+            // More errors → higher weight → appears first
+            return 100 + errorRatio * 100;
+        }
+
+        // All correct: push to the back, more correct = further back
+        return -record.timesCorrect;
     };
 
-    // Sort descending by weight (more errors first)
-    questions.sort((a, b) => getWeight(b) - getWeight(a));
+    // Add small jitter for randomness within same-weight groups
+    const jitter = new Map<NumeredQuestion, number>();
+    for (const q of questions) {
+        jitter.set(q, Math.random() * 10);
+    }
+
+    questions.sort((a, b) => {
+        const wA = getWeight(a) + (jitter.get(a) ?? 0);
+        const wB = getWeight(b) + (jitter.get(b) ?? 0);
+        return wB - wA;
+    });
 
     return questions;
 }

@@ -132,14 +132,16 @@ export const ConfigScreen: React.FC<{ quiz: Quiz, start: (auto: boolean, barajar
 
         <h3 className="user-input-setting-box drop-shadow-md">Se aprueba con <input className="questions-number-input" ref={percent} size={3} type="text" placeholder="total" /> % correctas.</h3>
 
-        <h4> <Switch on={auto} setTo={nvalue => onSetAuto(nvalue)} /> Avanzar automaticamente si respondí bien (ahorra tiempo)</h4>
-        <h4> <Switch on={barajaOpciones} setTo={nvalue => setBarajaOptions(nvalue)} /> Barajar opciones de la pregunta también.
-            <br /><sub>↳ Para evitar memorizar el orden de la respuesta correcta.</sub>
+        <div className="container flex flex-col md:w-1/2 m-auto text-left">
+        <h4 style={{ padding: 5 }} className="flex flex-row items-center"> <Switch on={auto} setTo={nvalue => onSetAuto(nvalue)} /> <span className="pl-2">Avanzar automaticamente si respondí bien (ahorra tiempo)</span></h4>
+        <h4 style={{ padding: 5 }} className="flex flex-row items-center"> <Switch on={barajaOpciones} setTo={nvalue => setBarajaOptions(nvalue)} /> <span className="pl-2">Barajar opciones de la pregunta también.
+            <br /><sub>↳ Para evitar memorizar el orden de la respuesta correcta.</sub></span>
         </h4>
 
-        <h4> <Switch on={refuerzo} setTo={nvalue => setRefuerzoInteligente(nvalue)} /> 🧠 Refuerzo inteligente
-            <br /><sub>↳ Prioriza preguntas que contestaste mal anteriormente.</sub>
+        <h4 style={{ padding: 5 }} className="flex flex-row items-center"> <Switch on={refuerzo} setTo={nvalue => setRefuerzoInteligente(nvalue)} /> <span className="pl-2">Refuerzo inteligente
+            <br /><sub>↳ Prioriza preguntas que contestaste mal anteriormente.</sub></span>
         </h4>
+        </div>
 
         <div className='next-question'>
             <a href="#" onClick={iniciar}><strong>Iniciar ⇒ </strong></a>
